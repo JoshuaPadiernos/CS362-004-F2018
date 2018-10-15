@@ -662,34 +662,30 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
     nextPlayer = 0;
   }
   
-	
-  //uses switch to select card and perform actions
-  switch( card ) 
-    {
-    case adventurer:
-      while(drawntreasure<2){
-	if (state->deckCount[currentPlayer] <1){//if the deck is empty we need to shuffle discard and add to deck
+  void adventurerAction(int *drawntreasure, struct gameState *state, int currentPlayer, int *cardDrawn, int temphand[], int *z) {
+  	while(drawntreasure<2) {
+  	if (state->deckCount[currentPlayer] <1){//if the deck is empty we need to shuffle discard and add to deck
 	  shuffle(currentPlayer, state);
 	}
 	drawCard(currentPlayer, state);
-	cardDrawn = state->hand[currentPlayer][state->handCount[currentPlayer]-1];//top card of hand is most recently drawn card.
-	if (cardDrawn == copper || cardDrawn == silver || cardDrawn == gold)
-	  drawntreasure++;
+	*cardDrawn = state->hand[currentPlayer][state->handCount[currentPlayer]-1];//top card of hand is most recently drawn card.
+	if (*cardDrawn == copper || *cardDrawn == silver || *cardDrawn == gold)
+	  *drawntreasure++;
 	else{
-	  temphand[z]=cardDrawn;
+	  temphand[*z] = *cardDrawn;
 	  state->handCount[currentPlayer]--; //this should just remove the top card (the most recently drawn one).
-	  z++;
+	  *z++;
 	}
       }
-      while(z-1>=0){
-	state->discard[currentPlayer][state->discardCount[currentPlayer]++]=temphand[z-1]; // discard all cards in play that have been drawn
-	z=z-1;
+      while(*z-1>=0){
+	state->discard[currentPlayer][state->discardCount[currentPlayer]++]=temphand[*z-1]; // discard all cards in play that have been drawn
+	*z = *z-1;
       }
-      return 0;
-			
-    case council_room:
-      //+4 Cards
-      for (i = 0; i < 4; i++)
+  }
+
+  void council_roomAction(int currentPlayer, struct gameState *state, int *handPos) {
+  	//+4 Cards (introduced bug only draws 2 cards instead of 4)
+      for (int i = 0; i < 2; i++)
 	{
 	  drawCard(currentPlayer, state);
 	}
@@ -698,7 +694,7 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
       state->numBuys++;
 			
       //Each other player draws a card
-      for (i = 0; i < state->numPlayers; i++)
+      for (int i = 0; i < state->numPlayers; i++)
 	{
 	  if ( i != currentPlayer )
 	    {
@@ -707,7 +703,52 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
 	}
 			
       //put played card in played card pile
-      discardCard(handPos, currentPlayer, state, 0);
+      discardCard(*handPos, currentPlayer, state, 0);
+  }
+
+  void smithyAction(int currentPlayer, struct gameState *state, int *handPos) {
+    //+3 Cards (Introduced bug is that it will draw only 2 cards instead of 3)
+  	// needed to initialize i
+      for (int i = 0; i < 2; i++)
+	{
+	  drawCard(currentPlayer, state);
+	}
+			
+      //discard card from hand
+      discardCard(*handPos, currentPlayer, state, 0);
+  }
+  void villageAction(int currentPlayer, struct gameState *state, int *handPos) {
+  	  //+1 Card
+      drawCard(currentPlayer, state);
+			
+      //+2 Actions (introduced bug will give 3 actions instead of 2)
+      state->numActions = state->numActions + 3;
+			
+      //discard played card from hand
+      discardCard(*handPos, currentPlayer, state, 0);
+  }
+
+  void great_hallAction(int currentPlayer, struct gameState *state, int *handPos) {
+  	  //+1 Card
+      drawCard(currentPlayer, state);
+			
+      //+1 Actions (introduced bug will give players 2 actions instead of 1)
+      state->numActions = state->numActions + 2;
+			
+      //discard card from hand
+      discardCard(*handPos, currentPlayer, state, 0);
+  }
+
+  //uses switch to select card and perform actions
+  switch( card ) 
+    {
+    case adventurer:
+      adventurerAction(&drawntreasure, state, currentPlayer, &cardDrawn, temphand, &z);
+      return 0;
+			
+    case council_room:
+      //+4 Cards
+      council_roomAction(currentPlayer, state, &handPos);
 			
       return 0;
 			
@@ -830,24 +871,11 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
 		
     case smithy:
       //+3 Cards
-      for (i = 0; i < 3; i++)
-	{
-	  drawCard(currentPlayer, state);
-	}
-			
-      //discard card from hand
-      discardCard(handPos, currentPlayer, state, 0);
+      smithyAction(currentPlayer, state, &handPos);
       return 0;
 		
     case village:
-      //+1 Card
-      drawCard(currentPlayer, state);
-			
-      //+2 Actions
-      state->numActions = state->numActions + 2;
-			
-      //discard played card from hand
-      discardCard(handPos, currentPlayer, state, 0);
+      villageAction(currentPlayer, state, &handPos);
       return 0;
 		
     case baron:
@@ -902,14 +930,7 @@ int cardEffect(int card, int choice1, int choice2, int choice3, struct gameState
       return 0;
 		
     case great_hall:
-      //+1 Card
-      drawCard(currentPlayer, state);
-			
-      //+1 Actions
-      state->numActions++;
-			
-      //discard card from hand
-      discardCard(handPos, currentPlayer, state, 0);
+    great_hallAction(currentPlayer, state, &handPos);
       return 0;
 		
     case minion:
